@@ -1,0 +1,50 @@
+{
+  "name": "ai-ass",
+  "version": "0.1.0",
+  "description": "AI ASS - desktop and web AI assistant",
+  "main": "dist/main.js",
+  "type": "module",
+  "scripts": {
+    "dev": "electron-vite dev",
+    "dev:web": "vite",
+    "build": "electron-vite build",
+    "build:web": "vite build",
+    "preview": "electron-vite preview",
+    "preview:web": "vite preview",
+    "start": "electron dist/main.js",
+    "pack": "electron-builder --dir",
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win"
+  },
+  "dependencies": {
+    "react": "^18.2.0",
+    "react-dom": "^18.2.0",
+    "axios": "^1.6.1",
+    "lucide-react": "^0.294.0"
+  },
+  "devDependencies": {
+    "@types/node": "^20.10.0",
+    "@types/react": "^18.2.39",
+    "@types/react-dom": "^18.2.17",
+    "@vitejs/plugin-react": "^4.2.1",
+    "electron": "^27.0.0",
+    "electron-builder": "^24.6.4",
+    "electron-vite": "^2.0.0",
+    "tailwindcss": "^3.3.6",
+    "typescript": "^5.3.2",
+    "vite": "^5.0.2",
+    "autoprefixer": "^10.4.16",
+    "postcss": "^8.4.31"
+  },
+  "build": {
+    "appId": "com.aiass.app",
+    "productName": "AI ASS",
+    "directories": {
+      "buildResources": "public",
+      "output": "release"
+    },
+    "files": [
+      "dist/**/*"
+    ]
+  }
+}

@@ -1,0 +1,391 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AI ASS</title>
+  <style>
+    * {
+      margin: 0;
+      padding: 0;
+      box-sizing: border-box;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      background: #0f172a;
+      color: #e2e8f0;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .container {
+      display: flex;
+      height: 100vh;
+    }
+
+    .sidebar {
+      width: 250px;
+      background: #1e293b;
+      border-right: 1px solid #334155;
+      padding: 20px;
+      display: flex;
+      flex-direction: column;
+      overflow-y: auto;
+    }
+
+    .sidebar h1 {
+      font-size: 18px;
+      margin-bottom: 5px;
+      font-weight: 600;
+    }
+
+    .sidebar p {
+      font-size: 12px;
+      color: #94a3b8;
+      margin-bottom: 20px;
+    }
+
+    .btn {
+      padding: 10px 15px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      font-weight: 500;
+      transition: all 0.2s;
+      font-size: 14px;
+    }
+
+    .btn-primary {
+      background: #3b82f6;
+      color: white;
+      width: 100%;
+      margin-bottom: 15px;
+    }
+
+    .btn-primary:hover {
+      background: #2563eb;
+    }
+
+    .btn-secondary {
+      background: #334155;
+      color: #e2e8f0;
+      width: 100%;
+    }
+
+    .btn-secondary:hover {
+      background: #475569;
+    }
+
+    .main {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .messages {
+      flex: 1;
+      overflow-y: auto;
+      padding: 24px;
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+    }
+
+    .message {
+      display: flex;
+      gap: 8px;
+      animation: slideIn 0.3s ease;
+    }
+
+    @keyframes slideIn {
+      from {
+        opacity: 0;
+        transform: translateY(10px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+
+    .message.user {
+      justify-content: flex-end;
+    }
+
+    .message-content {
+      max-width: 70%;
+      padding: 12px 16px;
+      border-radius: 8px;
+      word-wrap: break-word;
+      white-space: pre-wrap;
+      line-height: 1.5;
+    }
+
+    .message.user .message-content {
+      background: #3b82f6;
+      color: white;
+    }
+
+    .message.assistant .message-content {
+      background: #334155;
+      color: #e2e8f0;
+    }
+
+    .typing {
+      display: flex;
+      gap: 4px;
+      padding: 12px 16px;
+      background: #334155;
+      border-radius: 8px;
+      width: fit-content;
+    }
+
+    .typing div {
+      width: 8px;
+      height: 8px;
+      background: #64748b;
+      border-radius: 50%;
+      animation: bounce 1.4s infinite;
+    }
+
+    .typing div:nth-child(2) {
+      animation-delay: 0.2s;
+    }
+
+    .typing div:nth-child(3) {
+      animation-delay: 0.4s;
+    }
+
+    @keyframes bounce {
+      0%, 80%, 100% {
+        transform: translateY(0);
+      }
+      40% {
+        transform: translateY(-8px);
+      }
+    }
+
+    .input-area {
+      border-top: 1px solid #334155;
+      padding: 16px 24px;
+      background: #0f172a;
+    }
+
+    .input-group {
+      display: flex;
+      gap: 8px;
+    }
+
+    textarea {
+      flex: 1;
+      background: #1e293b;
+      border: 1px solid #334155;
+      border-radius: 6px;
+      padding: 12px;
+      color: #e2e8f0;
+      resize: none;
+      max-height: 80px;
+      font-family: inherit;
+      font-size: 14px;
+    }
+
+    textarea:focus {
+      outline: none;
+      border-color: #3b82f6;
+      box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.1);
+    }
+
+    textarea::placeholder {
+      color: #64748b;
+    }
+
+    .send-btn {
+      background: #3b82f6;
+      color: white;
+      padding: 12px 16px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      height: 44px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: all 0.2s;
+    }
+
+    .send-btn:hover:not(:disabled) {
+      background: #2563eb;
+    }
+
+    .send-btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .empty-state {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      height: 100%;
+      text-align: center;
+      color: #64748b;
+    }
+
+    .empty-state h2 {
+      font-size: 24px;
+      margin-bottom: 10px;
+      color: #cbd5e1;
+    }
+
+    ::-webkit-scrollbar {
+      width: 8px;
+    }
+
+    ::-webkit-scrollbar-track {
+      background: #1e293b;
+    }
+
+    ::-webkit-scrollbar-thumb {
+      background: #475569;
+      border-radius: 4px;
+    }
+
+    ::-webkit-scrollbar-thumb:hover {
+      background: #64748b;
+    }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <div class="sidebar">
+      <h1>AI ASS</h1>
+      <p>v0.1.0</p>
+      
+      <button class="btn btn-primary" onclick="newChat()">📝 New Chat</button>
+      
+      <div style="flex: 1;"></div>
+      
+      <button class="btn btn-secondary" onclick="toggleSettings()">⚙️ Settings</button>
+    </div>
+
+    <div class="main">
+      <div class="messages" id="messages">
+        <div class="empty-state">
+          <div>
+            <h2>Welcome! 👋</h2>
+            <p>Start a conversation below.</p>
+          </div>
+        </div>
+      </div>
+
+      <div class="input-area">
+        <div class="input-group">
+          <textarea id="input" placeholder="Type your message... (Enter to send, Shift+Enter for new line)" rows="2"></textarea>
+          <button class="send-btn" id="sendBtn" onclick="sendMessage()">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    let conversationId = null;
+    const messagesDiv = document.getElementById('messages');
+    const inputField = document.getElementById('input');
+    const sendBtn = document.getElementById('sendBtn');
+
+    // Handle Enter key
+    inputField.addEventListener('keydown', (e) => {
+      if (e.key === 'Enter' && !e.shiftKey) {
+        e.preventDefault();
+        sendMessage();
+      }
+    });
+
+    async function sendMessage() {
+      const message = inputField.value.trim();
+      if (!message) return;
+
+      // Clear input
+      inputField.value = '';
+      inputField.style.height = 'auto';
+
+      // Clear empty state
+      if (messagesDiv.querySelector('.empty-state')) {
+        messagesDiv.innerHTML = '';
+      }
+
+      // Add user message
+      addMessage('user', message);
+
+      // Show typing indicator
+      const typingId = showTyping();
+
+      try {
+        const response = await fetch('/api/chat', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            conversation_id: conversationId,
+            messages: [{ role: 'user', content: message }]
+          })
+        });
+
+        const data = await response.json();
+        conversationId = data.conversation_id;
+
+        // Remove typing indicator
+        document.getElementById(typingId).remove();
+
+        // Add assistant response
+        addMessage('assistant', data.response);
+      } catch (error) {
+        console.error('Error:', error);
+        document.getElementById(typingId).remove();
+        addMessage('assistant', 'Sorry, there was an error. Make sure the backend is running on http://127.0.0.1:8000');
+      }
+    }
+
+    function addMessage(role, content) {
+      const messageEl = document.createElement('div');
+      messageEl.className = `message ${role}`;
+      messageEl.innerHTML = `<div class="message-content">${escapeHtml(content)}</div>`;
+      messagesDiv.appendChild(messageEl);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+    }
+
+    function showTyping() {
+      const id = 'typing-' + Date.now();
+      const messageEl = document.createElement('div');
+      messageEl.id = id;
+      messageEl.className = 'message assistant';
+      messageEl.innerHTML = '<div class="typing"><div></div><div></div><div></div></div>';
+      messagesDiv.appendChild(messageEl);
+      messagesDiv.scrollTop = messagesDiv.scrollHeight;
+      return id;
+    }
+
+    function newChat() {
+      messagesDiv.innerHTML = '<div class="empty-state"><div><h2>Welcome! 👋</h2><p>Start a conversation below.</p></div></div>';
+      conversationId = null;
+      inputField.value = '';
+    }
+
+    function toggleSettings() {
+      alert('Settings:\n\n• Configure Hugging Face in backend/.env\n• Get a free token at huggingface.co/settings/tokens\n• Restart the backend after changes');
+    }
+
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+
+    // Auto-resize textarea
+    inputField.addEventListener('input', () => {
+      inputField.style.height = 'auto';
+      inputField.style.height = Math.min(inputField.scrollHeight, 80) + 'px';
+    });
+  </script>
+</body>
+</html>

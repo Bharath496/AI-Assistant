@@ -1,0 +1,12 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "aiass",
+  "pages_build_output_dir": "./dist",
+  "compatibility_date": "2026-06-01",
+  "ai": {
+    "binding": "AI"
+  },
+  "vars": {
+    "HF_MODEL": "Qwen/Qwen2.5-7B-Instruct"
+  }
+}
