@@ -25,6 +25,8 @@ jobs:
 
       - name: Install dependencies
         run: npm install
+        env:
+          npm_config_allow_scripts: "true"
 
       - name: Build web frontend
         run: npm run build:web
