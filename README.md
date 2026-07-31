@@ -30,7 +30,9 @@ A desktop and web AI assistant powered by **Hugging Face serverless inference** 
 ### Prerequisites
 - Python 3.10+
 - Node.js 18+
-- A free Hugging Face token (optional but recommended): https://huggingface.co/settings/tokens
+-https://4142be0b.aiass-5xd.pages.dev/
+- <img width="1919" height="986" alt="image" src="https://github.com/user-attachments/assets/97595edc-0c78-4fdc-9dd8-9ab51fb506bc" />
+
 
 ### Setup
 
