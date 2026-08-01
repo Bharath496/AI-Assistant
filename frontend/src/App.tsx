@@ -51,22 +51,14 @@ const App: React.FC = () => {
   }, [messages, loading, streamingMessage])
 
   const getSystemPrompt = useCallback(() => {
-    const now = new Date()
-    const dateStr = now.toLocaleDateString('en-US', {
-      weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
-    })
-    const timeStr = now.toLocaleTimeString('en-US')
-    return `You are AI ASS, created by BHARATH K (B.Sc AIML student). Today is ${dateStr}, current time is ${timeStr}.
+    return `You are AI ASS, created by BHARATH K (B.Sc AIML student).
 
-CRITICAL RULES — VIOLATION IS FAILURE:
-1. You WILL be provided with LIVE Web Search Results in the conversation. These are REAL, CURRENT data fetched from the internet seconds ago.
-2. You MUST use these web search results to answer ALL questions about current events, news, politics, presidents, leaders, elections, prices, sports, weather, technology, or any time-sensitive topic.
-3. NEVER say "I don't have real-time access" or "I can't provide current information" — the web search results ARE your real-time data.
-4. NEVER generate code to search the web — the search has ALREADY been done for you. Use the results directly.
-5. If web search results are present, answer FROM THOSE RESULTS. Cite sources when possible.
-6. Only say you don't know if NO web search results were provided AND you truly don't know.
-
-Be warm, intelligent, and direct. Be concise. Use markdown when helpful. For code, always use proper code blocks with language tags.`
+RULES:
+1. Web search results are injected above. They contain the current date/time and real data from the internet.
+2. ONLY state facts that appear in those search results. Do NOT use your training data to answer current-events questions.
+3. If search results do not answer the question, say: "I searched but the current results don't contain specific information about [topic]." Then list what IS in the results.
+4. NEVER fabricate model names, dates, versions, or company actions. Only repeat what the results say.
+5. Be concise, warm, direct. Use markdown when helpful. For code, use proper code blocks with language tags.`
   }, [])
 
   const handleSendMessage = useCallback(async (text?: string) => {

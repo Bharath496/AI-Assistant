@@ -1,4 +1,4 @@
-const HF_MODEL = 'Qwen/Qwen2.5-7B-Instruct'
+const HF_MODEL = 'deepseek-ai/DeepSeek-R1'
 const HF_ENDPOINT = 'https://router.huggingface.co/v1/chat/completions'
 
 const isPlainObject = (value) => value !== null && typeof value === 'object' && !Array.isArray(value)
@@ -30,9 +30,16 @@ const searchWeb = async (query) => {
   const wikiResults = []
   const lowerQuery = query.toLowerCase()
 
-  // Strategy 1: BBC News RSS (reliable, real headlines)
+  // Determine if query is tech/AI related
+  const isTech = /ai|artificial intelligence|model|gpt|llm|openai|anthropic|google|meta|deepseek|machine learning|neural|chatbot|gemini|claude|llama/i.test(query)
+  const isModelQuery = /model|gpt|llm|release|announce|launch|version/i.test(query)
+
+  // Strategy 1: BBC News RSS (general) OR Tech RSS (tech queries)
   try {
-    const newsRes = await fetch('https://feeds.bbci.co.uk/news/rss.xml', {
+    const feedUrl = isTech
+      ? 'https://feeds.bbci.co.uk/news/technology/rss.xml'
+      : 'https://feeds.bbci.co.uk/news/rss.xml'
+    const newsRes = await fetch(feedUrl, {
       headers: { 'User-Agent': 'AI-ASS/1.0' },
     })
     if (newsRes.ok) {
@@ -55,6 +62,61 @@ const searchWeb = async (query) => {
       }
     }
   } catch {}
+
+  // Strategy 1b: For tech queries, also fetch tech/AI news
+  if (isTech && newsResults.length < 5) {
+    // TechCrunch AI feed
+    try {
+      const tcRes = await fetch('https://techcrunch.com/category/artificial-intelligence/feed/', {
+        headers: { 'User-Agent': 'Mozilla/5.0' },
+      })
+      if (tcRes.ok) {
+        const xml = await tcRes.text()
+        const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || []
+        for (const item of items.slice(0, 6)) {
+          let title = item.match(/<title>([\s\S]*?)<\/title>/)?.[1] || ''
+          const cdata = title.match(/<!\[CDATA\[([\s\S]*?)\]\]>/)
+          if (cdata) title = cdata[1]
+          title = title.trim()
+          const link = item.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() || ''
+          const desc = item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || ''
+          let descText = desc
+          const descCdata = descText.match(/<!\[CDATA\[([\s\S]*?)\]\]>/)
+          if (descCdata) descText = descCdata[1]
+          descText = descText.replace(/<[^>]*>/g, '').substring(0, 200).trim()
+          if (title && title.length > 5) {
+            newsResults.push({ title, content: descText, url: link })
+          }
+        }
+      }
+    } catch {}
+
+    // Ars Technica
+    try {
+      const arsRes = await fetch('https://feeds.arstechnica.com/arstechnica/technology-lab', {
+        headers: { 'User-Agent': 'AI-ASS/1.0' },
+      })
+      if (arsRes.ok) {
+        const xml = await arsRes.text()
+        const items = xml.match(/<item>([\s\S]*?)<\/item>/g) || []
+        for (const item of items.slice(0, 5)) {
+          let title = item.match(/<title>([\s\S]*?)<\/title>/)?.[1] || ''
+          const cdata = title.match(/<!\[CDATA\[([\s\S]*?)\]\]>/)
+          if (cdata) title = cdata[1]
+          title = title.trim()
+          const link = item.match(/<link>([\s\S]*?)<\/link>/)?.[1]?.trim() || ''
+          const desc = item.match(/<description>([\s\S]*?)<\/description>/)?.[1] || ''
+          let descText = desc
+          const descCdata = descText.match(/<!\[CDATA\[([\s\S]*?)\]\]>/)
+          if (descCdata) descText = descCdata[1]
+          descText = descText.replace(/<[^>]*>/g, '').substring(0, 200).trim()
+          if (title && title.length > 5) {
+            newsResults.push({ title, content: descText, url: link })
+          }
+        }
+      }
+    } catch {}
+  }
 
   // Strategy 2: DuckDuckGo HTML search (backup)
   if (newsResults.length < 3) {
@@ -112,20 +174,47 @@ const searchWeb = async (query) => {
     } catch {}
   }
 
+  // Reorder: put most relevant results first
+  const lowerQ = query.toLowerCase()
+  newsResults.sort((a, b) => {
+    const aMatch = lowerQ.split(/\s+/).some(w => (a.title + a.content).toLowerCase().includes(w)) ? 1 : 0
+    const bMatch = lowerQ.split(/\s+/).some(w => (b.title + b.content).toLowerCase().includes(w)) ? 1 : 0
+    return bMatch - aMatch
+  })
+
   return [...newsResults, ...wikiResults]
 }
 
-const buildWebContext = (results) => {
+const buildWebContext = (results, query) => {
   if (!results.length) return ''
-  let ctx = '\n\n--- Web Search Results (live, current) ---\n'
-  for (let i = 0; i < results.length && i < 8; i++) {
-    const r = results[i]
-    ctx += `${i + 1}. **${r.title}**`
-    if (r.content) ctx += `\n   ${r.content}`
-    if (r.url) ctx += `\n   Source: ${r.url}`
-    ctx += '\n\n'
+  const now = new Date()
+  const dateStr = now.toLocaleDateString('en-US', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric', timeZone: 'UTC' })
+  const timeStr = now.toLocaleTimeString('en-US', { timeZone: 'UTC', hour12: true, hour: 'numeric', minute: '2-digit' })
+
+  // Deduplicate results by title
+  const seen = new Set()
+  const unique = results.filter(r => {
+    const key = r.title.toLowerCase().substring(0, 40)
+    if (seen.has(key)) return false
+    seen.add(key)
+    return true
+  })
+
+  let ctx = `\n=== CURRENT DATE/TIME: ${dateStr}, ${timeStr} UTC ===\n`
+  ctx += `=== SEARCH RESULTS FOR: "${query}" ===\n\n`
+  for (let i = 0; i < unique.length && i < 12; i++) {
+    const r = unique[i]
+    ctx += `[${i + 1}] ${r.title}\n`
+    if (r.content) ctx += `    ${r.content}\n`
+    if (r.url) ctx += `    URL: ${r.url}\n`
+    ctx += '\n'
   }
-  ctx += '--- End of web search results ---\n\nYou MUST answer using ONLY the above current web search results. These are live, real-time data fetched from the internet. Do NOT say you lack access to real-time information — the search results ARE your real-time data. Answer directly from the results above.'
+  ctx += `=== END OF RESULTS (${unique.length} total) ===\n\n`
+  ctx += 'INSTRUCTIONS:\n'
+  ctx += '- You may ONLY reference results numbered [1] through [' + unique.length + '] above.\n'
+  ctx += '- NEVER invent result numbers that do not exist above.\n'
+  ctx += '- NEVER state facts not present in the results. If a model name, version, or date is not in the results, do NOT mention it.\n'
+  ctx += '- If results do not answer the question, say: "Based on my search results, here is what I found:" and list what IS there.\n'
   return ctx
 }
 
@@ -178,7 +267,7 @@ export async function onRequestPost(context) {
     try {
       const results = await searchWeb(userText)
       if (results.length) {
-        const webCtx = buildWebContext(results)
+        const webCtx = buildWebContext(results, userText)
         // Find the system prompt and append web results to it
         const sysIdx = messages.findIndex(m => m.role === 'system')
         if (sysIdx >= 0) {
