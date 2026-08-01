@@ -24,9 +24,10 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
-        run: |
-          npm ci
-          node -e "require('esbuild').version" || node node_modules/esbuild/install.js
+        run: npm install --force
+
+      - name: Verify esbuild
+        run: node -e "console.log(require('esbuild').version)"
 
       - name: Build web frontend
         run: npm run build:web
