@@ -1,5 +1,5 @@
 import React, { useEffect, useRef, useState, useCallback } from 'react'
-import { Sparkles, Newspaper, TrendingUp, Brain, Code2, Globe, Compass } from 'lucide-react'
+import { Sparkles, Newspaper, TrendingUp, Brain, Code2, Globe, Compass, SendHorizontal } from 'lucide-react'
 import { apiRequest, getRuntimeLabel, checkBackendHealth, API_BASE_URL } from './lib/api'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
@@ -11,12 +11,12 @@ interface Message { role: 'user' | 'assistant'; content: string }
 type BackendStatus = 'checking' | 'online' | 'offline'
 
 const suggestions = [
-  { icon: Newspaper, label: 'Today\'s top news', text: 'What are the biggest news headlines today?' },
-  { icon: TrendingUp, label: 'Latest AI news', text: 'What are the latest AI models and announcements this year?' },
-  { icon: Brain, label: 'Explain a concept', text: 'Explain quantum computing like I am 15 years old' },
-  { icon: Code2, label: 'Write code', text: 'Write a Python function to fetch and parse JSON from an API' },
-  { icon: Globe, label: 'World events', text: 'What are the current major world events and developments?' },
-  { icon: Compass, label: 'Research a topic', text: 'Compare the pros and cons of renewable energy sources' },
+  { icon: Newspaper, label: 'Today\'s top news', text: 'What are the biggest news headlines today?', color: 'from-blue-500/20 to-cyan-500/20', iconColor: 'text-blue-400' },
+  { icon: TrendingUp, label: 'Latest AI news', text: 'What are the latest AI models and announcements this year?', color: 'from-violet-500/20 to-purple-500/20', iconColor: 'text-violet-400' },
+  { icon: Brain, label: 'Explain a concept', text: 'Explain quantum computing like I am 15 years old', color: 'from-pink-500/20 to-rose-500/20', iconColor: 'text-pink-400' },
+  { icon: Code2, label: 'Write code', text: 'Write a Python function to fetch and parse JSON from an API', color: 'from-emerald-500/20 to-green-500/20', iconColor: 'text-emerald-400' },
+  { icon: Globe, label: 'World events', text: 'What are the current major world events and developments?', color: 'from-amber-500/20 to-orange-500/20', iconColor: 'text-amber-400' },
+  { icon: Compass, label: 'Research a topic', text: 'Compare the pros and cons of renewable energy sources', color: 'from-indigo-500/20 to-blue-500/20', iconColor: 'text-indigo-400' },
 ]
 
 const App: React.FC = () => {
@@ -144,35 +144,40 @@ RULES:
         runtimeLabel={getRuntimeLabel()}
       />
 
-      <div className="flex min-h-0 flex-1 flex-col">
+      <div className="relative z-10 flex min-h-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto">
           {displayMessages.length === 0 ? (
             <div className="flex min-h-full items-center justify-center px-4 py-10">
-              <div className="animate-fade-up w-full max-w-xl text-center">
-                <div className="mb-5 flex justify-center">
-                  <div className="flex h-14 w-14 items-center justify-center rounded-2xl gradient-btn">
-                    <Sparkles size={26} className="text-white" />
+              <div className="w-full max-w-xl text-center">
+                {/* Animated logo */}
+                <div className="mb-6 flex justify-center animate-scale-in">
+                  <div className="relative">
+                    <div className="gradient-btn flex h-16 w-16 items-center justify-center rounded-3xl shadow-2xl shadow-indigo-500/30">
+                      <Sparkles size={28} className="text-white" />
+                    </div>
+                    <div className="absolute -inset-3 rounded-3xl bg-gradient-to-r from-indigo-500/20 to-purple-500/20 blur-xl animate-pulse-glow" style={{ color: 'rgba(99,102,241,0.15)' }} />
                   </div>
                 </div>
-                <h1 className="mb-2 text-3xl font-bold tracking-tight md:text-4xl">
+
+                <h1 className="animate-fade-up stagger-1 mb-2 text-4xl font-bold tracking-tight md:text-5xl">
                   <span className="text-gradient">AI ASS</span>
                 </h1>
-                <p className="mx-auto mb-8 max-w-sm text-[14px] leading-relaxed text-zinc-500">
+                <p className="animate-fade-up stagger-2 mx-auto mb-8 max-w-sm text-[14px] leading-relaxed text-zinc-500">
                   Created by BHARATH K. Live web search, streaming responses, and code highlighting.
                 </p>
 
-                <div className="grid gap-2.5 sm:grid-cols-2 lg:grid-cols-3">
-                  {suggestions.map(({ icon: Icon, label, text }) => (
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {suggestions.map(({ icon: Icon, label, text, color, iconColor }, i) => (
                     <button
                       key={text}
                       onClick={() => handleSendMessage(text)}
                       disabled={loading}
-                      className="chip glass flex items-center gap-3 rounded-xl px-4 py-3 text-left"
+                      className={`animate-fade-up stagger-${i + 1} chip glass group flex items-center gap-3 rounded-xl px-4 py-3.5 text-left`}
                     >
-                      <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-indigo-500/10">
-                        <Icon size={14} className="text-indigo-400" />
+                      <span className={`flex h-9 w-9 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br ${color} transition-transform duration-300 group-hover:scale-110`}>
+                        <Icon size={16} className={iconColor} />
                       </span>
-                      <span className="text-[13px] font-medium text-zinc-300">{label}</span>
+                      <span className="text-[13px] font-medium text-zinc-300 group-hover:text-white transition-colors">{label}</span>
                     </button>
                   ))}
                 </div>
@@ -186,10 +191,10 @@ RULES:
               {loading && !streamingMessage && (
                 <div className="animate-fade-up flex justify-start">
                   <div className="flex items-start gap-2.5">
-                    <div className="gradient-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full">
+                    <div className="gradient-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-lg shadow-indigo-500/20">
                       <span className="text-[10px] font-bold text-white">A</span>
                     </div>
-                    <div className="glass flex items-center gap-1 rounded-2xl rounded-tl-md px-4 py-3">
+                    <div className="glass flex items-center gap-1.5 rounded-2xl rounded-tl-md px-4 py-3">
                       <span className="typing-dot" />
                       <span className="typing-dot" />
                       <span className="typing-dot" />

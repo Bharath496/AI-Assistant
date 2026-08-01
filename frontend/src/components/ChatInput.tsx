@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useRef, useEffect } from 'react'
 import { ArrowUp, Sparkles } from 'lucide-react'
 
 interface Props {
@@ -9,6 +9,15 @@ interface Props {
 }
 
 const ChatInput: React.FC<Props> = ({ value, loading, onChange, onSend }) => {
+  const textareaRef = useRef<HTMLTextAreaElement>(null)
+
+  useEffect(() => {
+    if (textareaRef.current) {
+      textareaRef.current.style.height = 'auto'
+      textareaRef.current.style.height = Math.min(textareaRef.current.scrollHeight, 180) + 'px'
+    }
+  }, [value])
+
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === 'Enter' && !e.shiftKey) {
       e.preventDefault()
@@ -17,15 +26,16 @@ const ChatInput: React.FC<Props> = ({ value, loading, onChange, onSend }) => {
   }
 
   return (
-    <div className="border-t border-white/[0.04] bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-transparent px-4 pb-4 pt-3 md:px-5">
+    <div className="relative z-10 border-t border-white/[0.04] bg-gradient-to-t from-[#050510] via-[#050510]/80 to-transparent px-4 pb-4 pt-3 md:px-5">
       <div className="mx-auto max-w-3xl">
-        <div className="glass-strong rounded-2xl transition-all focus-within:border-indigo-500/30 focus-within:shadow-[0_0_40px_rgba(99,102,241,0.08)]">
+        <div className="glass-strong rounded-2xl transition-all duration-300 focus-within:border-indigo-500/30 focus-within:shadow-[0_0_50px_rgba(99,102,241,0.1)]">
           <textarea
+            ref={textareaRef}
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Ask anything..."
-            className="max-h-40 min-h-[48px] w-full resize-none bg-transparent px-4 py-3.5 text-[14.5px] text-white placeholder:text-zinc-600 focus:outline-none"
+            className="max-h-[180px] min-h-[48px] w-full resize-none bg-transparent px-4 py-3.5 text-[14.5px] text-white placeholder:text-zinc-600 focus:outline-none"
             rows={1}
             disabled={loading}
           />
@@ -39,7 +49,7 @@ const ChatInput: React.FC<Props> = ({ value, loading, onChange, onSend }) => {
               <button
                 onClick={onSend}
                 disabled={loading || !value.trim()}
-                className="flex h-8 w-8 items-center justify-center rounded-lg gradient-btn text-white disabled:opacity-30"
+                className="gradient-btn flex h-8 w-8 items-center justify-center rounded-lg text-white"
                 aria-label="Send"
               >
                 {loading ? (

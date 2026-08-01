@@ -58,12 +58,12 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
 
   if (isUser) {
     return (
-      <div className="animate-fade-up flex justify-end">
+      <div className="animate-slide-right flex justify-end">
         <div className="flex max-w-[80%] items-end gap-2.5 md:max-w-[65%]">
-          <div className="rounded-2xl rounded-br-md bg-indigo-600/90 px-4 py-2.5 text-[14px] leading-relaxed text-white">
+          <div className="rounded-2xl rounded-br-md bg-gradient-to-br from-indigo-600 to-purple-600 px-4 py-2.5 text-[14px] leading-relaxed text-white shadow-lg shadow-indigo-500/15">
             <p className="whitespace-pre-wrap">{message.content}</p>
           </div>
-          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.06] border border-white/[0.06]">
             <User size={13} className="text-zinc-400" />
           </div>
         </div>
@@ -72,13 +72,13 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
   }
 
   return (
-    <div className="animate-fade-up group flex justify-start">
+    <div className="animate-slide-left group flex justify-start">
       <div className="flex max-w-[92%] items-start gap-2.5 md:max-w-[82%]">
-        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full gradient-btn mt-0.5">
+        <div className="gradient-btn flex h-7 w-7 shrink-0 items-center justify-center rounded-full shadow-lg shadow-indigo-500/20 mt-0.5">
           <span className="text-[11px] font-bold text-white">A</span>
         </div>
         <div className="min-w-0 flex-1">
-          <div className="markdown-body rounded-2xl rounded-tl-md bg-white/[0.03] px-4 py-3">
+          <div className="markdown-body rounded-2xl rounded-tl-md bg-white/[0.03] border border-white/[0.04] px-4 py-3 transition-colors hover:bg-white/[0.04]">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
@@ -99,10 +99,10 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
                   return <td className="border-b border-white/[0.04] px-3 py-2 text-zinc-300">{children}</td>
                 },
                 a({ href, children }) {
-                  return <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline decoration-indigo-400/30 underline-offset-2 transition hover:text-indigo-300">{children}</a>
+                  return <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline decoration-indigo-400/30 underline-offset-2 transition-colors hover:text-indigo-300">{children}</a>
                 },
                 blockquote({ children }) {
-                  return <blockquote className="my-2 border-l-3 border-indigo-500/50 pl-3 text-zinc-400">{children}</blockquote>
+                  return <blockquote className="my-2 border-l-3 border-indigo-500/50 pl-3 text-zinc-400 italic">{children}</blockquote>
                 },
                 h1({ children }) { return <h1 className="mb-2 mt-4 text-xl font-bold text-white">{children}</h1> },
                 h2({ children }) { return <h2 className="mb-2 mt-3 text-lg font-bold text-white">{children}</h2> },
@@ -119,7 +119,7 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
           </div>
           <button
             onClick={handleCopy}
-            className="mt-1 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] text-zinc-600 opacity-0 transition hover:text-zinc-300 group-hover:opacity-100"
+            className="mt-1 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] text-zinc-600 opacity-0 transition-all duration-200 hover:text-zinc-300 group-hover:opacity-100"
             aria-label="Copy response"
           >
             {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
