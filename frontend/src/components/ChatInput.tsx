@@ -1,5 +1,5 @@
 import React from 'react'
-import { SendHorizontal, Wand2 } from 'lucide-react'
+import { ArrowUp, Sparkles } from 'lucide-react'
 
 interface Props {
   value: string
@@ -17,41 +17,43 @@ const ChatInput: React.FC<Props> = ({ value, loading, onChange, onSend }) => {
   }
 
   return (
-    <div className="border-t border-white/5 bg-gradient-to-t from-[#050914] via-[#050914]/90 to-transparent p-4 md:p-5">
-      <div className="glass-strong mx-auto max-w-3xl rounded-2xl p-2 transition-all focus-within:border-sky-400/40 focus-within:shadow-[0_0_40px_rgba(56,189,248,0.12)]">
-        <div className="flex items-end gap-2">
+    <div className="border-t border-white/[0.04] bg-gradient-to-t from-[#09090b] via-[#09090b]/80 to-transparent px-4 pb-4 pt-3 md:px-5">
+      <div className="mx-auto max-w-3xl">
+        <div className="glass-strong rounded-2xl transition-all focus-within:border-indigo-500/30 focus-within:shadow-[0_0_40px_rgba(99,102,241,0.08)]">
           <textarea
             value={value}
             onChange={(e) => onChange(e.target.value)}
             onKeyDown={handleKeyDown}
-            placeholder="Ask AI ASS anything... (Enter to send)"
-            className="max-h-44 min-h-[48px] flex-1 resize-none bg-transparent px-3 py-2.5 text-[15px] text-white placeholder:text-slate-500 focus:outline-none"
+            placeholder="Ask anything..."
+            className="max-h-40 min-h-[48px] w-full resize-none bg-transparent px-4 py-3.5 text-[14.5px] text-white placeholder:text-zinc-600 focus:outline-none"
             rows={1}
             disabled={loading}
           />
-          <button
-            onClick={onSend}
-            disabled={loading || !value.trim()}
-            className="gradient-btn flex h-11 w-11 shrink-0 items-center justify-center rounded-xl text-white"
-            aria-label="Send message"
-          >
-            {loading ? (
-              <div className="flex gap-1">
-                <span className="typing-dot" />
-                <span className="typing-dot" />
-                <span className="typing-dot" />
-              </div>
-            ) : (
-              <SendHorizontal size={19} />
-            )}
-          </button>
-        </div>
-        <div className="flex items-center justify-between px-3 pb-1 pt-1.5">
-          <span className="flex items-center gap-1.5 text-[11px] text-slate-500">
-            <Wand2 size={11} className="text-violet-400" />
-            Live web search enabled
-          </span>
-          <span className="text-[11px] text-slate-600">Enter to send · Shift+Enter for new line</span>
+          <div className="flex items-center justify-between border-t border-white/[0.04] px-4 py-2">
+            <span className="flex items-center gap-1.5 text-[10.5px] text-zinc-600">
+              <Sparkles size={10} className="text-indigo-400" />
+              Web search enabled
+            </span>
+            <div className="flex items-center gap-2">
+              <span className="text-[10.5px] text-zinc-600">Shift+Enter for newline</span>
+              <button
+                onClick={onSend}
+                disabled={loading || !value.trim()}
+                className="flex h-8 w-8 items-center justify-center rounded-lg gradient-btn text-white disabled:opacity-30"
+                aria-label="Send"
+              >
+                {loading ? (
+                  <div className="flex gap-1">
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                    <span className="typing-dot" />
+                  </div>
+                ) : (
+                  <ArrowUp size={16} strokeWidth={2.5} />
+                )}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </div>

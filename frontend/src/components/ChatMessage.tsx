@@ -1,85 +1,50 @@
 import React, { useState, useCallback, Suspense, lazy } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Sparkles, Copy, Check, User, Terminal, CheckCircle2 } from 'lucide-react'
+import { Copy, Check, User, Terminal, CheckCircle2 } from 'lucide-react'
 
-const LazySyntaxHighlighter = lazy(() => import('react-syntax-highlighter').then(m => ({ default: m.Prism })))
-const LazyStyle = import('react-syntax-highlighter/dist/esm/styles/prism').then(m => m.oneDark)
+const LazyHighlighter = lazy(() => import('react-syntax-highlighter').then(m => ({ default: m.Prism })))
+const LazyStyle = import('react-syntax-highlighter/dist/esm/styles/prism').then(m => m.nightOwl)
 
-interface Message {
-  role: 'user' | 'assistant'
-  content: string
-}
-
-interface Props {
-  message: Message
-}
+interface Message { role: 'user' | 'assistant'; content: string }
+interface Props { message: Message }
 
 const CodeBlock = ({ language, children }: { language: string; children: string }) => {
   const [copied, setCopied] = useState(false)
-
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(children)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { /* clipboard unavailable */ }
+    try { await navigator.clipboard.writeText(children); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {}
   }, [children])
 
   return (
-    <div className="code-block group my-3 overflow-hidden rounded-xl border border-white/8">
-      <div className="flex items-center justify-between border-b border-white/8 bg-white/[0.04] px-4 py-2">
-        <div className="flex items-center gap-2">
-          <Terminal size={13} className="text-slate-500" />
-          <span className="text-[12px] font-medium text-slate-400">{language || 'code'}</span>
+    <div className="code-block group my-3">
+      <div className="flex items-center justify-between border-b border-white/[0.06] bg-white/[0.02] px-3.5 py-1.5">
+        <div className="flex items-center gap-1.5">
+          <Terminal size={12} className="text-zinc-500" />
+          <span className="text-[11px] font-medium text-zinc-500">{language || 'text'}</span>
         </div>
-        <button
-          onClick={handleCopy}
-          className="flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-500 transition hover:border-white/20 hover:text-sky-300"
-          aria-label="Copy code"
-        >
-          {copied ? (
-            <>
-              <CheckCircle2 size={12} className="text-emerald-400" />
-              <span className="text-emerald-400">Copied</span>
-            </>
-          ) : (
-            <>
-              <Copy size={12} />
-              <span>Copy</span>
-            </>
-          )}
+        <button onClick={handleCopy} className="flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] text-zinc-500 transition hover:text-zinc-300" aria-label="Copy code">
+          {copied ? <><CheckCircle2 size={11} className="text-emerald-400" /><span className="text-emerald-400">Copied</span></> : <><Copy size={11} /><span>Copy</span></>}
         </button>
       </div>
-      <Suspense fallback={<pre className="m-0 overflow-x-auto bg-[rgba(2,6,17,0.8)] p-4 text-[13.5px] text-slate-300" style={{lineHeight:1.6}}><code>{children}</code></pre>}>
-        <LazyCodeInner language={language} children={children} />
+      <Suspense fallback={<pre className="m-0 overflow-x-auto bg-black/30 p-4 text-[13px] text-zinc-300" style={{ lineHeight: 1.6 }}><code>{children}</code></pre>}>
+        <LazyCodeInner language={language} code={children} />
       </Suspense>
     </div>
   )
 }
 
-const LazyCodeInner = ({ language, children }: { language: string; children: string }) => {
+const LazyCodeInner = ({ language, code }: { language: string; code: string }) => {
   const [style, setStyle] = React.useState<any>(null)
   React.useEffect(() => { LazyStyle.then(s => setStyle(s)) }, [])
-  if (!style) return <pre className="m-0 overflow-x-auto bg-[rgba(2,6,17,0.8)] p-4 text-[13.5px] text-slate-300" style={{lineHeight:1.6}}><code>{children}</code></pre>
+  if (!style) return <pre className="m-0 overflow-x-auto bg-black/30 p-4 text-[13px] text-zinc-300" style={{ lineHeight: 1.6 }}><code>{code}</code></pre>
   return (
-    <LazySyntaxHighlighter
+    <LazyHighlighter
       language={language || 'text'}
       style={style}
-      customStyle={{
-        margin: 0,
-        padding: '1rem',
-        background: 'rgba(2, 6, 17, 0.8)',
-        fontSize: '13.5px',
-        lineHeight: '1.6',
-        borderRadius: 0,
-        border: 'none',
-      }}
-      showLineNumbers={children.split('\n').length > 3}
-      lineNumberStyle={{ color: 'rgba(148,163,184,0.3)', fontSize: '11px', minWidth: '2.5em' }}
-    >
-      {children}
-    </LazySyntaxHighlighter>
+      customStyle={{ margin: 0, padding: '1rem', background: 'rgba(0,0,0,0.3)', fontSize: '13px', lineHeight: '1.6', borderRadius: 0, border: 'none' }}
+      showLineNumbers={code.split('\n').length > 3}
+      lineNumberStyle={{ color: 'rgba(255,255,255,0.15)', fontSize: '10px', minWidth: '2em' }}
+    >{code}</LazyHighlighter>
   )
 }
 
@@ -88,22 +53,18 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
   const [copied, setCopied] = useState(false)
 
   const handleCopy = useCallback(async () => {
-    try {
-      await navigator.clipboard.writeText(message.content)
-      setCopied(true)
-      setTimeout(() => setCopied(false), 2000)
-    } catch { /* clipboard unavailable */ }
+    try { await navigator.clipboard.writeText(message.content); setCopied(true); setTimeout(() => setCopied(false), 2000) } catch {}
   }, [message.content])
 
   if (isUser) {
     return (
       <div className="animate-fade-up flex justify-end">
-        <div className="flex max-w-[85%] items-end gap-2.5 md:max-w-[70%]">
-          <div className="rounded-2xl rounded-br-md bg-gradient-to-br from-sky-500 to-blue-600 px-4 py-3 leading-7 text-white shadow-lg shadow-sky-500/20">
-            <p className="whitespace-pre-wrap text-[15px]">{message.content}</p>
+        <div className="flex max-w-[80%] items-end gap-2.5 md:max-w-[65%]">
+          <div className="rounded-2xl rounded-br-md bg-indigo-600/90 px-4 py-2.5 text-[14px] leading-relaxed text-white">
+            <p className="whitespace-pre-wrap">{message.content}</p>
           </div>
-          <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-white/10 bg-white/10">
-            <User size={15} className="text-slate-300" />
+          <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full bg-white/[0.06]">
+            <User size={13} className="text-zinc-400" />
           </div>
         </div>
       </div>
@@ -112,92 +73,45 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
 
   return (
     <div className="animate-fade-up group flex justify-start">
-      <div className="flex max-w-[95%] items-start gap-3 md:max-w-[85%]">
-        <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full gradient-btn shadow-lg shadow-indigo-500/30">
-          <Sparkles size={15} className="text-white" />
+      <div className="flex max-w-[92%] items-start gap-2.5 md:max-w-[82%]">
+        <div className="flex h-7 w-7 shrink-0 items-center justify-center rounded-full gradient-btn mt-0.5">
+          <span className="text-[11px] font-bold text-white">A</span>
         </div>
-        <div className="relative min-w-0 flex-1">
-          <div className="markdown-body rounded-2xl rounded-tl-md px-4 py-3.5 glass">
+        <div className="min-w-0 flex-1">
+          <div className="markdown-body rounded-2xl rounded-tl-md bg-white/[0.03] px-4 py-3">
             <ReactMarkdown
               remarkPlugins={[remarkGfm]}
               components={{
                 code({ className, children, ...props }) {
                   const match = /language-(\w+)/.exec(className || '')
                   const codeString = String(children).replace(/\n$/, '')
-                  if (match) {
-                    return <CodeBlock language={match[1]}>{codeString}</CodeBlock>
-                  }
-                  if (codeString.includes('\n')) {
-                    return <CodeBlock language="text">{codeString}</CodeBlock>
-                  }
-                  return (
-                    <code className="rounded-md bg-sky-500/10 px-1.5 py-0.5 text-[0.875em] text-sky-300" {...props}>
-                      {children}
-                    </code>
-                  )
+                  if (match) return <CodeBlock language={match[1]}>{codeString}</CodeBlock>
+                  if (codeString.includes('\n')) return <CodeBlock language="text">{codeString}</CodeBlock>
+                  return <code className="rounded bg-indigo-500/10 px-1.5 py-0.5 text-[0.85em] text-indigo-300" {...props}>{children}</code>
                 },
                 table({ children }) {
-                  return (
-                    <div className="my-3 overflow-x-auto rounded-xl border border-white/8">
-                      <table className="w-full text-sm">{children}</table>
-                    </div>
-                  )
+                  return <div className="my-2 overflow-x-auto rounded-xl border border-white/[0.06]"><table className="w-full text-[13px]">{children}</table></div>
                 },
                 th({ children }) {
-                  return (
-                    <th className="border-b border-white/10 bg-white/[0.04] px-4 py-2.5 text-left font-semibold text-slate-200">
-                      {children}
-                    </th>
-                  )
+                  return <th className="border-b border-white/[0.06] bg-white/[0.03] px-3 py-2 text-left font-semibold text-zinc-200">{children}</th>
                 },
                 td({ children }) {
-                  return (
-                    <td className="border-b border-white/5 px-4 py-2.5 text-slate-300">{children}</td>
-                  )
+                  return <td className="border-b border-white/[0.04] px-3 py-2 text-zinc-300">{children}</td>
                 },
                 a({ href, children }) {
-                  return (
-                    <a
-                      href={href}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="text-sky-400 underline decoration-sky-400/30 underline-offset-2 transition-colors hover:text-sky-300 hover:decoration-sky-300/50"
-                    >
-                      {children}
-                    </a>
-                  )
+                  return <a href={href} target="_blank" rel="noopener noreferrer" className="text-indigo-400 underline decoration-indigo-400/30 underline-offset-2 transition hover:text-indigo-300">{children}</a>
                 },
                 blockquote({ children }) {
-                  return (
-                    <blockquote className="my-3 border-l-4 border-indigo-500/60 pl-4 text-slate-400">
-                      {children}
-                    </blockquote>
-                  )
+                  return <blockquote className="my-2 border-l-3 border-indigo-500/50 pl-3 text-zinc-400">{children}</blockquote>
                 },
-                h1({ children }) {
-                  return <h1 className="mb-3 mt-5 text-xl font-bold text-white">{children}</h1>
-                },
-                h2({ children }) {
-                  return <h2 className="mb-2 mt-4 text-lg font-bold text-white">{children}</h2>
-                },
-                h3({ children }) {
-                  return <h3 className="mb-2 mt-3 text-base font-semibold text-white">{children}</h3>
-                },
-                ul({ children }) {
-                  return <ul className="my-2 list-disc pl-5 text-slate-200">{children}</ul>
-                },
-                ol({ children }) {
-                  return <ol className="my-2 list-decimal pl-5 text-slate-200">{children}</ol>
-                },
-                li({ children }) {
-                  return <li className="my-1 leading-relaxed">{children}</li>
-                },
-                p({ children }) {
-                  return <p className="my-2 leading-relaxed text-slate-200">{children}</p>
-                },
-                hr() {
-                  return <hr className="my-4 border-white/10" />
-                },
+                h1({ children }) { return <h1 className="mb-2 mt-4 text-xl font-bold text-white">{children}</h1> },
+                h2({ children }) { return <h2 className="mb-2 mt-3 text-lg font-bold text-white">{children}</h2> },
+                h3({ children }) { return <h3 className="mb-1.5 mt-2.5 text-base font-semibold text-white">{children}</h3> },
+                ul({ children }) { return <ul className="my-1.5 list-disc pl-4 text-zinc-200">{children}</ul> },
+                ol({ children }) { return <ol className="my-1.5 list-decimal pl-4 text-zinc-200">{children}</ol> },
+                li({ children }) { return <li className="my-0.5 leading-relaxed">{children}</li> },
+                p({ children }) { return <p className="my-1.5 leading-relaxed text-zinc-200">{children}</p> },
+                hr() { return <hr className="my-3 border-white/[0.06]" /> },
               }}
             >
               {message.content}
@@ -205,10 +119,10 @@ const ChatMessage: React.FC<Props> = ({ message }) => {
           </div>
           <button
             onClick={handleCopy}
-            className="mt-1.5 flex items-center gap-1.5 rounded-lg border border-white/8 bg-white/[0.04] px-2.5 py-1 text-[11px] font-medium text-slate-500 opacity-0 transition hover:text-sky-300 group-hover:opacity-100"
+            className="mt-1 flex items-center gap-1 rounded-md px-2 py-0.5 text-[10.5px] text-zinc-600 opacity-0 transition hover:text-zinc-300 group-hover:opacity-100"
             aria-label="Copy response"
           >
-            {copied ? <Check size={12} className="text-emerald-400" /> : <Copy size={12} />}
+            {copied ? <Check size={11} className="text-emerald-400" /> : <Copy size={11} />}
             {copied ? 'Copied' : 'Copy'}
           </button>
         </div>
