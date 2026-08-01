@@ -3,9 +3,11 @@ FastAPI routes for the AI assistant backend.
 """
 
 from fastapi import APIRouter, HTTPException, Depends
+from fastapi.responses import StreamingResponse
 from pydantic import BaseModel
 from typing import List, Dict, Any, Optional
 import uuid
+import json
 
 router = APIRouter()
 
@@ -175,6 +177,76 @@ async def chat(
         conversation_id=request.conversation_id,
         response=response_text,
         usage=result.get("usage", {"prompt_tokens": 0, "completion_tokens": 0}),
+    )
+
+
+@router.post("/chat/stream")
+async def chat_stream(
+    request: ChatRequest,
+    llm: LLMManager = Depends(get_llm_manager),
+    tool_manager: ToolManager = Depends(get_tool_manager),
+):
+    """Stream chat response via Server-Sent Events."""
+    if not request.conversation_id:
+        request.conversation_id = str(uuid.uuid4())
+
+    history = memory_store.get_conversation_history(request.conversation_id)
+    messages = history + [
+        {"role": msg.role, "content": msg.content}
+        for msg in request.messages
+    ]
+
+    user_text = request.messages[-1].content if request.messages else ""
+
+    # Auto web search
+    web_context = ""
+    if user_text and tool_manager.has_tool("web_search"):
+        try:
+            search_result = await tool_manager.execute("web_search", query=user_text, max_results=3)
+            if search_result and "results" in search_result and search_result["results"]:
+                web_context = "\n\n--- Web Search Results (live, current) ---\n"
+                for i, r in enumerate(search_result["results"][:3], 1):
+                    title = r.get("title", "")
+                    snippet = r.get("content", r.get("snippet", ""))
+                    url = r.get("url", "")
+                    web_context += f"{i}. **{title}**\n   {snippet}"
+                    if url:
+                        web_context += f"\n   Source: {url}"
+                    web_context += "\n\n"
+                web_context += "--- End of web search results ---\n\nUse the above current information to answer the user."
+                messages.append({"role": "system", "content": web_context})
+        except Exception:
+            pass
+
+    conversation_id = request.conversation_id
+    full_response = []
+
+    async def event_generator():
+        async for chunk in llm.chat_stream(
+            messages=messages,
+            system_prompt=request.system_prompt,
+            temperature=request.temperature,
+            max_tokens=request.max_tokens,
+        ):
+            full_response.append(chunk)
+            yield f"data: {json.dumps({'chunk': chunk})}\n\n"
+
+        # Store the complete response
+        response_text = "".join(full_response)
+        for msg in request.messages:
+            memory_store.add_message(conversation_id, msg.role, msg.content)
+        memory_store.add_message(conversation_id, "assistant", response_text)
+
+        yield f"data: {json.dumps({'done': True, 'conversation_id': conversation_id})}\n\n"
+
+    return StreamingResponse(
+        event_generator(),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "X-Accel-Buffering": "no",
+        },
     )
 
 

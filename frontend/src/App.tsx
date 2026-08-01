@@ -1,6 +1,6 @@
-import React, { useEffect, useRef, useState } from 'react'
-import { Sparkles, TrendingUp, Newspaper, Brain, Code2 } from 'lucide-react'
-import { apiRequest, getRuntimeLabel, checkBackendHealth } from './lib/api'
+import React, { useEffect, useRef, useState, useCallback } from 'react'
+import { Sparkles, TrendingUp, Newspaper, Brain, Code2, Globe, Zap, Lightbulb, Compass } from 'lucide-react'
+import { apiRequest, getRuntimeLabel, checkBackendHealth, API_BASE_URL } from './lib/api'
 import ChatMessage from './components/ChatMessage'
 import ChatInput from './components/ChatInput'
 import Sidebar from './components/Sidebar'
@@ -19,6 +19,8 @@ const suggestions = [
   { icon: TrendingUp, label: 'Latest AI news & models', text: 'What are the latest AI models and announcements this year?' },
   { icon: Brain, label: 'Explain something complex', text: 'Explain quantum computing like I am 15 years old' },
   { icon: Code2, label: 'Write code', text: 'Write a Python function to fetch and parse JSON from an API' },
+  { icon: Globe, label: 'Current events', text: 'What are the current major world events and developments?' },
+  { icon: Compass, label: 'Research a topic', text: 'Compare the pros and cons of renewable energy sources' },
 ]
 
 const App: React.FC = () => {
@@ -28,7 +30,9 @@ const App: React.FC = () => {
   const [conversationId, setConversationId] = useState<string | null>(null)
   const [showSettings, setShowSettings] = useState(false)
   const [backendStatus, setBackendStatus] = useState<BackendStatus>('checking')
+  const [streamingMessage, setStreamingMessage] = useState('')
   const messagesEndRef = useRef<HTMLDivElement>(null)
+  const abortRef = useRef<AbortController | null>(null)
 
   useEffect(() => {
     const probe = async () => {
@@ -44,9 +48,9 @@ const App: React.FC = () => {
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }, [messages, loading])
+  }, [messages, loading, streamingMessage])
 
-  const getSystemPrompt = () => {
+  const getSystemPrompt = useCallback(() => {
     const now = new Date()
     const dateStr = now.toLocaleDateString('en-US', {
       weekday: 'long', year: 'numeric', month: 'long', day: 'numeric',
@@ -56,10 +60,12 @@ const App: React.FC = () => {
 
 CRITICAL: Your training data is outdated (before 2024). You MUST NOT answer from memory about: current events, news, politics, presidents, leaders, elections, prices, sports scores, weather, technology releases, or any time-sensitive facts. For ALL such questions, use ONLY the Web Search Results section in the conversation — it contains LIVE, CURRENT data. Answer from those results and cite them. If no web results are present for a time-sensitive question, say "Let me search for the latest information" rather than guessing.
 
-Be warm, intelligent, and direct. Be concise and avoid filler. Use markdown when helpful. If unsure, say so. Push back politely if something is wrong or risky.`
-  }
+Be warm, intelligent, and direct. Be concise and avoid filler. Use markdown when helpful. If unsure, say so. Push back politely if something is wrong or risky.
 
-  const handleSendMessage = async (text?: string) => {
+For code requests: Always use proper markdown code blocks with language tags (e.g. \`\`\`python). Explain your code briefly.`
+  }, [])
+
+  const handleSendMessage = useCallback(async (text?: string) => {
     const content = (text ?? input).trim()
     if (!content || loading) return
 
@@ -68,40 +74,106 @@ Be warm, intelligent, and direct. Be concise and avoid filler. Use markdown when
     setMessages(newMessages)
     setInput('')
     setLoading(true)
+    setStreamingMessage('')
 
+    // Try streaming first
     try {
-      const response = await apiRequest('POST', '/chat', {
-        conversation_id: conversationId,
-        messages: [userMessage],
-        system_prompt: getSystemPrompt(),
+      const controller = new AbortController()
+      abortRef.current = controller
+
+      const response = await fetch(`${API_BASE_URL}/chat/stream`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          conversation_id: conversationId,
+          messages: [userMessage],
+          system_prompt: getSystemPrompt(),
+        }),
+        signal: controller.signal,
       })
 
-      if (response?.response) {
-        setConversationId(response.conversation_id)
-        setMessages([...newMessages, { role: 'assistant', content: response.response }])
-        setBackendStatus('online')
-      } else {
-        throw new Error(response?.error || 'No response returned')
+      if (!response.ok) throw new Error('Stream failed')
+
+      const reader = response.body?.getReader()
+      if (!reader) throw new Error('No reader')
+
+      const decoder = new TextDecoder()
+      let buffer = ''
+      let accumulated = ''
+      let newConversationId = conversationId
+
+      while (true) {
+        const { done, value } = await reader.read()
+        if (done) break
+
+        buffer += decoder.decode(value, { stream: true })
+        const lines = buffer.split('\n')
+        buffer = lines.pop() || ''
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue
+          try {
+            const data = JSON.parse(line.slice(6))
+            if (data.chunk) {
+              accumulated += data.chunk
+              setStreamingMessage(accumulated)
+            }
+            if (data.done) {
+              newConversationId = data.conversation_id
+            }
+          } catch { /* skip parse errors */ }
+        }
       }
-    } catch (error) {
-      console.error('Error:', error)
-      setBackendStatus('offline')
-      setMessages([
-        ...newMessages,
-        {
-          role: 'assistant',
-          content: 'The backend is not reachable. Check the hosted deployment or your network connection.',
-        },
-      ])
+
+      if (accumulated) {
+        setConversationId(newConversationId)
+        setMessages([...newMessages, { role: 'assistant', content: accumulated }])
+      }
+      setBackendStatus('online')
+    } catch {
+      // Fallback to non-streaming
+      try {
+        const response = await apiRequest('POST', '/chat', {
+          conversation_id: conversationId,
+          messages: [userMessage],
+          system_prompt: getSystemPrompt(),
+        })
+
+        if (response?.response) {
+          setConversationId(response.conversation_id)
+          setMessages([...newMessages, { role: 'assistant', content: response.response }])
+          setBackendStatus('online')
+        } else {
+          throw new Error(response?.error || 'No response returned')
+        }
+      } catch {
+        setBackendStatus('offline')
+        setMessages([
+          ...newMessages,
+          {
+            role: 'assistant',
+            content: 'The backend is not reachable. Check the hosted deployment or your network connection.',
+          },
+        ])
+      }
     } finally {
       setLoading(false)
+      setStreamingMessage('')
+      abortRef.current = null
     }
-  }
+  }, [input, loading, messages, conversationId, getSystemPrompt])
 
-  const handleClearConversation = () => {
+  const handleClearConversation = useCallback(() => {
+    if (abortRef.current) abortRef.current.abort()
     setMessages([])
     setConversationId(null)
-  }
+    setStreamingMessage('')
+  }, [])
+
+  // Show streaming message as a temporary message
+  const displayMessages = streamingMessage
+    ? [...messages, { role: 'assistant' as const, content: streamingMessage }]
+    : messages
 
   return (
     <div className="nebula-bg flex min-h-screen flex-col overflow-hidden text-white md:flex-row">
@@ -115,7 +187,7 @@ Be warm, intelligent, and direct. Be concise and avoid filler. Use markdown when
 
       <div className="flex min-h-0 flex-1 flex-col">
         <div className="flex-1 overflow-y-auto">
-          {messages.length === 0 ? (
+          {displayMessages.length === 0 ? (
             <div className="flex min-h-full items-center justify-center px-4 py-10">
               <div className="animate-fade-up w-full max-w-2xl text-center">
                 <div className="mb-6 flex justify-center">
@@ -131,7 +203,7 @@ Be warm, intelligent, and direct. Be concise and avoid filler. Use markdown when
                   Ask about today&apos;s news, code, ideas, or anything.
                 </p>
 
-                <div className="grid gap-3 sm:grid-cols-2">
+                <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
                   {suggestions.map(({ icon: Icon, label, text }) => (
                     <button
                       key={text}
@@ -150,11 +222,11 @@ Be warm, intelligent, and direct. Be concise and avoid filler. Use markdown when
             </div>
           ) : (
             <div className="mx-auto max-w-3xl space-y-5 px-4 py-6 md:py-8">
-              {messages.map((message, index) => (
+              {displayMessages.map((message, index) => (
                 <ChatMessage key={index} message={message} />
               ))}
 
-              {loading && (
+              {loading && !streamingMessage && (
                 <div className="animate-fade-up flex justify-start">
                   <div className="flex items-start gap-3">
                     <div className="gradient-btn flex h-8 w-8 shrink-0 items-center justify-center rounded-full shadow-lg shadow-indigo-500/30">

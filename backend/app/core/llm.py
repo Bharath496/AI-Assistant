@@ -5,7 +5,7 @@ Defaults to Hugging Face serverless inference (free, no local install).
 Falls back to a lightweight demo response only when no provider credentials are configured.
 """
 
-from typing import Optional, List, Dict, Any
+from typing import Optional, List, Dict, Any, AsyncGenerator
 import os
 import aiohttp
 import requests
@@ -596,3 +596,88 @@ class LLMManager:
             if isinstance(error, str):
                 return f"{provider} error: {error}"
         return f"{provider} request failed"
+
+    async def chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream chat completion as an async generator of text chunks."""
+        normalized_messages = self._normalize_messages(messages)
+
+        if not self.has_valid_credentials:
+            result = self._mock_response(normalized_messages)
+            yield result.get("response", "")
+            return
+
+        if self.provider == "huggingface":
+            async for chunk in self._hf_chat_stream(normalized_messages, temperature, max_tokens, system_prompt):
+                yield chunk
+            return
+
+        # For non-streaming providers, fall back to full response
+        result = await self.chat(normalized_messages, temperature, max_tokens, system_prompt)
+        yield result.get("response", "")
+
+    async def _hf_chat_stream(
+        self,
+        messages: List[Dict[str, str]],
+        temperature: float = 0.7,
+        max_tokens: Optional[int] = None,
+        system_prompt: Optional[str] = None,
+    ) -> AsyncGenerator[str, None]:
+        """Stream Hugging Face chat completion via SSE."""
+        api_key = self.config.get("huggingface_api_key")
+        base_url = self.config.get("huggingface_base_url", "https://router.huggingface.co/v1")
+
+        payload_messages = []
+        if system_prompt:
+            payload_messages.append({"role": "system", "content": system_prompt})
+        payload_messages.extend(messages)
+
+        payload: Dict[str, Any] = {
+            "model": self.model,
+            "messages": payload_messages,
+            "temperature": temperature,
+            "stream": True,
+        }
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+
+        try:
+            async with aiohttp.ClientSession() as session:
+                async with session.post(
+                    f"{base_url}/chat/completions",
+                    headers={
+                        "Authorization": f"Bearer {api_key}",
+                        "Content-Type": "application/json",
+                    },
+                    json=payload,
+                    timeout=aiohttp.ClientTimeout(total=180),
+                ) as resp:
+                    if resp.status != 200:
+                        data = await resp.json(content_type=None)
+                        error_detail = data.get("error", {}).get("message", data) if isinstance(data, dict) else data
+                        yield f"\n\n*Hugging Face error ({resp.status}): {error_detail}*"
+                        return
+
+                    async for line in resp.content:
+                        decoded = line.decode("utf-8").strip()
+                        if not decoded or not decoded.startswith("data:"):
+                            continue
+                        data_str = decoded[5:].strip()
+                        if data_str == "[DONE]":
+                            break
+                        try:
+                            import json
+                            chunk = json.loads(data_str)
+                            delta = chunk.get("choices", [{}])[0].get("delta", {})
+                            content = delta.get("content") or delta.get("reasoning_content") or ""
+                            if content:
+                                yield content
+                        except Exception:
+                            continue
+        except Exception as exc:
+            yield f"\n\n*Hugging Face streaming error: {exc}*"
