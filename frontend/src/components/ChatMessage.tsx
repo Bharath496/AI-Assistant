@@ -1,9 +1,10 @@
-import React, { useState, useCallback } from 'react'
+import React, { useState, useCallback, Suspense, lazy } from 'react'
 import ReactMarkdown from 'react-markdown'
 import remarkGfm from 'remark-gfm'
-import { Prism as SyntaxHighlighter } from 'react-syntax-highlighter'
-import { oneDark } from 'react-syntax-highlighter/dist/esm/styles/prism'
 import { Sparkles, Copy, Check, User, Terminal, CheckCircle2 } from 'lucide-react'
+
+const LazySyntaxHighlighter = lazy(() => import('react-syntax-highlighter').then(m => ({ default: m.Prism })))
+const LazyStyle = import('react-syntax-highlighter/dist/esm/styles/prism').then(m => m.oneDark)
 
 interface Message {
   role: 'user' | 'assistant'
@@ -50,24 +51,35 @@ const CodeBlock = ({ language, children }: { language: string; children: string 
           )}
         </button>
       </div>
-      <SyntaxHighlighter
-        language={language || 'text'}
-        style={oneDark}
-        customStyle={{
-          margin: 0,
-          padding: '1rem',
-          background: 'rgba(2, 6, 17, 0.8)',
-          fontSize: '13.5px',
-          lineHeight: '1.6',
-          borderRadius: 0,
-          border: 'none',
-        }}
-        showLineNumbers={children.split('\n').length > 3}
-        lineNumberStyle={{ color: 'rgba(148,163,184,0.3)', fontSize: '11px', minWidth: '2.5em' }}
-      >
-        {children}
-      </SyntaxHighlighter>
+      <Suspense fallback={<pre className="m-0 overflow-x-auto bg-[rgba(2,6,17,0.8)] p-4 text-[13.5px] text-slate-300" style={{lineHeight:1.6}}><code>{children}</code></pre>}>
+        <LazyCodeInner language={language} children={children} />
+      </Suspense>
     </div>
+  )
+}
+
+const LazyCodeInner = ({ language, children }: { language: string; children: string }) => {
+  const [style, setStyle] = React.useState<any>(null)
+  React.useEffect(() => { LazyStyle.then(s => setStyle(s)) }, [])
+  if (!style) return <pre className="m-0 overflow-x-auto bg-[rgba(2,6,17,0.8)] p-4 text-[13.5px] text-slate-300" style={{lineHeight:1.6}}><code>{children}</code></pre>
+  return (
+    <LazySyntaxHighlighter
+      language={language || 'text'}
+      style={style}
+      customStyle={{
+        margin: 0,
+        padding: '1rem',
+        background: 'rgba(2, 6, 17, 0.8)',
+        fontSize: '13.5px',
+        lineHeight: '1.6',
+        borderRadius: 0,
+        border: 'none',
+      }}
+      showLineNumbers={children.split('\n').length > 3}
+      lineNumberStyle={{ color: 'rgba(148,163,184,0.3)', fontSize: '11px', minWidth: '2.5em' }}
+    >
+      {children}
+    </LazySyntaxHighlighter>
   )
 }
 
